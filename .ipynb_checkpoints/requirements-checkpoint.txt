@@ -1,0 +1,6 @@
+yahoo_fin
+numpy
+tensorflow
+scikit-learn
+keras
+matplotlib
