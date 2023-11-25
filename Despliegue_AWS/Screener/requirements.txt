@@ -1,0 +1,4 @@
+pyyaml==6.0.1
+alpaca-trade-api
+yfinance
+pandas_ta
