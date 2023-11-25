@@ -1,6 +1,0 @@
-requests
-alpaca_trade_api
-yfinance
-pandas_ta
-matplotlib
-pyTelegramBotAPI
