@@ -121,4 +121,8 @@ def lambda_handler(event, context):
             except:
                 pass
 
-    return 'Screener Function: DONE!'
+    return  {
+        "statusCode": 200,
+        "body": {"message": 'Screener Function: DONE!'}
+    }
+
