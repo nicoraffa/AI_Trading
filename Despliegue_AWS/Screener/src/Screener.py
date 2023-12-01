@@ -22,6 +22,35 @@ TA_BBANDS_STD = 2.3
 TAKE_PROFIT_DELTA = 0.01
 CASH_LIMIT = 26000
 
+# Screener script
+def lambda_handler(event, context):
+    trader_api = tradeapi.REST(TRADER_API_KEY, TRADER_API_SECRET, TRADER_API_URL)
+    account = trader_api.get_account()
+    screened = screen_stocks(trader_api)
+    screened = screened[0:3]
+    if len(screened) > 0:
+        cash_for_trade_per_share = (float(account.non_marginable_buying_power) - CASH_LIMIT) / len(screened)
+        for item in screened:
+            stock = item['stock']
+            operation = 'buy' if item['direction'] == 'UP' else 'sell'
+            stop_loss = item['stop_loss']
+            take_profit = item['take_profit']
+            share_price = round(min(stop_loss, take_profit), 2)
+            shares_to_trade = int(cash_for_trade_per_share / share_price)
+            try:
+                if abs(stop_loss - take_profit) > share_price * TAKE_PROFIT_DELTA and shares_to_trade > 0:
+                    publish_stock_to_topic(stock, operation, stop_loss, take_profit, shares_to_trade)
+                    print(f'\n{stock} {operation} {stop_loss} {take_profit} {shares_to_trade}')
+            except:
+                pass
+
+    return  {
+        "statusCode": 200,
+        "body": {"message": 'Screener Function: DONE!'}
+    }
+
+
+
 # Check stock with TA indicators
 def check_stock(stock):
     data = {}
@@ -98,31 +127,4 @@ def publish_stock_to_topic(stock, operation, stop_loss, take_profit, shares_to_t
         }
     )
 
-
-# Screener script
-def lambda_handler(event, context):
-    trader_api = tradeapi.REST(TRADER_API_KEY, TRADER_API_SECRET, TRADER_API_URL)
-    account = trader_api.get_account()
-    screened = screen_stocks(trader_api)
-    screened = screened[0:3]
-    if len(screened) > 0:
-        cash_for_trade_per_share = (float(account.non_marginable_buying_power) - CASH_LIMIT) / len(screened)
-        for item in screened:
-            stock = item['stock']
-            operation = 'buy' if item['direction'] == 'UP' else 'sell'
-            stop_loss = item['stop_loss']
-            take_profit = item['take_profit']
-            share_price = round(min(stop_loss, take_profit), 2)
-            shares_to_trade = int(cash_for_trade_per_share / share_price)
-            try:
-                if abs(stop_loss - take_profit) > share_price * TAKE_PROFIT_DELTA and shares_to_trade > 0:
-                    publish_stock_to_topic(stock, operation, stop_loss, take_profit, shares_to_trade)
-                    print(f'\n{stock} {operation} {stop_loss} {take_profit} {shares_to_trade}')
-            except:
-                pass
-
-    return  {
-        "statusCode": 200,
-        "body": {"message": 'Screener Function: DONE!'}
-    }
 
