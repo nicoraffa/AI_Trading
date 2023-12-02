@@ -61,6 +61,63 @@ def lambda_handler(event, context):
 
     return {'message': f'{ORACULAR_ID}: execution DONE!'}
 
+# Send message to Telegram channel
+def send_message(message):
+  response = req.post(
+        f'{TELEGRAM_URL}/{TELEGRAM_BOT_ID}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&parse_mode=Markdown&text={message}')
+
+  return response
+
+# Load data from Pub/Sub infrastructure
+def LoadSub(sub_name):
+  data = []
+
+  subscriber = pubsub_v1.SubscriberClient(credentials=credentials)
+  subscription_path = subscriber.subscription_path(PUBSUB_PROJECT_ID, sub_name)
+
+  def callback(message: pubsub_v1.subscriber.message.Message):
+      data.append(message)
+
+  streaming_pull_future = subscriber \
+    .subscribe(subscription_path, callback=callback)
+
+  with subscriber:
+      try:
+          streaming_pull_future.result(timeout=PUBSUB_TIMEOUT)
+      except TimeoutError:
+          streaming_pull_future.cancel()
+          streaming_pull_future.result()
+
+  return data
+
+# Publish predictions fot the stock
+def PublishPredictions(stock, day_1, day_2, day_3):
+  publisher = pubsub_v1.PublisherClient(credentials=credentials)
+  topic_path = publisher.topic_path(PUBSUB_PROJECT_ID, PUBSUB_ORACULAR_TOPIC_ID)
+  data_str = f'{stock}'
+  data = data_str.encode("utf-8")
+  publisher.publish(topic_path, \
+                    data, \
+                    stock=stock, \
+                    day_1=f'{day_1}', \
+                    day_2=f'{day_2}', \
+                    day_3=f'{day_3}')
+
+# Get stocks for work
+def GetStocks():
+  stocks = []
+  
+  screener = LoadSub(PUBSUB_SCREENER_TOPIC_SUB_ID)
+  oracular = LoadSub(PUBSUB_ORACULAR_TOPIC_SUB_ID)
+
+  oracular_list = [x.attributes['stock'] for x in oracular]
+  pair_list = [x.attributes for x in screener if x.attributes['stock'] not in oracular_list]
+  
+  stocks = [s['stock'] for s in pair_list]
+
+  return stocks
+
+
 def PrepareData(days, init_df):
   df = init_df.copy()
   df['future'] = df['close'].shift(-days)
