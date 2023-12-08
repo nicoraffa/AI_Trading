@@ -74,6 +74,9 @@ def send_message(message):
 #Ejemplo de mensaje de salida de Screener.py:
 #MSBI buy 24.24 24.5 41
 
+#Ejemplo de event que toma Lamda de SQS:
+#{'Records': [{'EventSource': 'aws:sns', 'EventVersion': '1.0', 'EventSubscriptionArn': 'arn:aws:sns:us-east-1:232041705264:ejemplo1:7d58b081-c19f-488f-bab1-602eae1032d7', 'Sns': {'Type': 'Notification', 'MessageId': '7f188a5e-14c8-5e8f-a0cc-d7b2978650bb', 'TopicArn': 'arn:aws:sns:us-east-1:232041705264:ejemplo1', 'Subject': None, 'Message': 'hello world', 'Timestamp': '2023-12-08T02:35:58.130Z', 'SignatureVersion': '1', 'Signature': 'oRn1Q32Yf8UNc31rgSmIej3rMXfMlr8/8SRspZ1PbKbH1jUNFdwyFbUJWaHyP7F/n6JzhL1uc9QL6ruk6Udi7RHtEjJEhO5y8pe9dJhjMdDK2uOcm3SuNtqDXuAfDEHsb9cYxx5jQXY4T7Xz33sH+jHd7R0h7foHk6/TSA+OMq/MP/GPZlng+9QcTRXKPTCPbv7ucaY+SGb5l8PQKDLWN7YPSMdJ33HJva4lPL4VKuqOqnX693HAzsaECL0MzeRC1DyXhzYKfmfIRC2hyahN9jxsTOtMg8nCuAkHp1eyJtmx/KUXw/OnVnTHXDDDOFL3VneQyxNmJfZeKN9iTzB0nw==', 'SigningCertUrl': 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService-01d088a6f77103d0fe307c0069e40ed6.pem', 'UnsubscribeUrl': 'https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:232041705264:ejemplo1:7d58b081-c19f-488f-bab1-602eae1032d7', 'MessageAttributes': {'stock': {'Type': 'String', 'Value': '"MSFT"'}}}}]}
+
 # # Load data from Pub/Sub infrastructure - codigo alternativo
 # def LoadSub1(event):
 #     sns_client(boto3.client('sns'))
@@ -143,11 +146,21 @@ def PublishPredictions1(stock, day_1, day_2, day_3):
 #                     day_2=f'{day_2}', \
 #                     day_3=f'{day_3}')
 
+
+#     for record in event['Records']:
+#        try:
+#           message = record['Sns']['Message']
+#           data.append(message)
+#         except Exception as e:
+#           print("An error occurred")
+#           raise e
+
+
+
 # Get stocks for work
-def GetStocks():
+def GetStocks(event):
   stocks = []
-  screener = LoadSub1()
-  for record in screener['Records']:
+  for record in event['Records']:
        try:
           stock = record['Sns']['MessageAttributes']['stock']['StringValue']
           stocks.append(stock)
