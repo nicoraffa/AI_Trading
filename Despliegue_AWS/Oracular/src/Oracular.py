@@ -3,6 +3,7 @@ import yfinance as yf
 import numpy as np
 import datetime as dt
 import time as tm
+import boto3
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import LSTM, Dropout, Dense
@@ -14,11 +15,13 @@ TELEGRAM_URL = 'https://api.telegram.org'
 TELEGRAM_BOT_ID = 'bot6240899521:AAEjX6ayWtTb1FSU-OIZ8lbCoX7szwA3_jk'
 TELEGRAM_CHAT_ID = '-1002121727585'
 
+AWS_REGION = 'us-east-1'
+SCREENER_SNS_TOPIC_ARN= 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic'
+ORACULAR_SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingOracularTopic'
+ORACULAR_SNS_TOPIC_SUBSCRIPTION_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic:4de70354-535d-491a-8b93-3c148f588a11'
 
-PUBSUB_SCREENER_TOPIC_ARN= 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic'
-PUBSUB_ORACULAR_TOPIC_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingOracularTopic'
-#ver para que sirve el SUB_ID de oracular
-PUBSUB_ORACULAR_TOPIC_ARN = 'SharkOracularTopic'
+
+
 PUBSUB_TIMEOUT = 5.0
 
 N_STEPS = 7
@@ -26,7 +29,7 @@ N_STEPS = 7
 LOOKUP_STEPS = [1, 2, 3]
 
 def lambda_handler(event, context):
-    stocks = GetStocks()  # Asegúrate de tener la función GetStocks implementada
+    stocks = GetStocks()  #Revisar esta función en la definición
 
     if len(stocks) > 0:
         date_now = tm.strftime('%Y-%m-%d')
@@ -68,53 +71,89 @@ def send_message(message):
 
   return response
 
+#Ejemplo de mensaje de salida de Screener.py:
+#MSBI buy 24.24 24.5 41
+
+# # Load data from Pub/Sub infrastructure - codigo alternativo
+# def LoadSub1(event):
+#     sns_client(boto3.client('sns'))
+#     data = []
+#     for record in event['Records']:
+#        try:
+#           message = record['Sns']['Message']
+#           data.append(message)
+#         except Exception as e:
+#           print("An error occurred")
+#           raise e
+#     print(f"Se cargaron los datos de Screener correctamente")
+#     return data
+
+
+
+
+
 # Load data from Pub/Sub infrastructure
-def LoadSub(sub_name):
-  data = []
+# def LoadSub(sub_name):
+#   data = []
 
-  subscriber = pubsub_v1.SubscriberClient(credentials=credentials)
-  subscription_path = subscriber.subscription_path(PUBSUB_PROJECT_ID, sub_name)
+#   subscriber = pubsub_v1.SubscriberClient(credentials=credentials)
+#   subscription_path = subscriber.subscription_path(PUBSUB_PROJECT_ID, sub_name)
 
-  def callback(message: pubsub_v1.subscriber.message.Message):
-      data.append(message)
+#   def callback(message: pubsub_v1.subscriber.message.Message):
+#       data.append(message)
 
-  streaming_pull_future = subscriber \
-    .subscribe(subscription_path, callback=callback)
+#   streaming_pull_future = subscriber \
+#     .subscribe(subscription_path, callback=callback)
 
-  with subscriber:
-      try:
-          streaming_pull_future.result(timeout=PUBSUB_TIMEOUT)
-      except TimeoutError:
-          streaming_pull_future.cancel()
-          streaming_pull_future.result()
+#   with subscriber:
+#       try:
+#           streaming_pull_future.result(timeout=PUBSUB_TIMEOUT)
+#       except TimeoutError:
+#           streaming_pull_future.cancel()
+#           streaming_pull_future.result()
 
-  return data
+#   return data
 
-# Publish predictions fot the stock
-def PublishPredictions(stock, day_1, day_2, day_3):
-  publisher = pubsub_v1.PublisherClient(credentials=credentials)
-  topic_path = publisher.topic_path(PUBSUB_PROJECT_ID, PUBSUB_ORACULAR_TOPIC_ID)
-  data_str = f'{stock}'
-  data = data_str.encode("utf-8")
-  publisher.publish(topic_path, \
-                    data, \
-                    stock=stock, \
-                    day_1=f'{day_1}', \
-                    day_2=f'{day_2}', \
-                    day_3=f'{day_3}')
+# Publish predictions fot the stock - codigo altenativo
+
+def PublishPredictions1(stock, day_1, day_2, day_3):
+   sns_client = boto3.client('sns', region_name=AWS_REGION)
+   message = f'{stock}'
+   sns_client.publish(
+      TopicArn= ORACULAR_SNS_TOPIC_ARN,
+      Message= message,
+        MessageAttributes={
+            'stock': {'DataType': 'String', 'StringValue': stock},
+            'day_1': {'DataType': 'String', 'StringValue': str(day_1)},
+            'day_2': {'DataType': 'String', 'StringValue': str(day_2)},
+            'day_3': {'DataType': 'String', 'StringValue': str(day_3)},
+        }
+    )
+
+# # Publish predictions fot the stock
+# def PublishPredictions(stock, day_1, day_2, day_3):
+#   publisher = pubsub_v1.PublisherClient(credentials=credentials)
+#   topic_path = publisher.topic_path(PUBSUB_PROJECT_ID, PUBSUB_ORACULAR_TOPIC_ID)
+#   data_str = f'{stock}'
+#   data = data_str.encode("utf-8")
+#   publisher.publish(topic_path, \
+#                     data, \
+#                     stock=stock, \
+#                     day_1=f'{day_1}', \
+#                     day_2=f'{day_2}', \
+#                     day_3=f'{day_3}')
 
 # Get stocks for work
 def GetStocks():
   stocks = []
-  
-  screener = LoadSub(PUBSUB_SCREENER_TOPIC_SUB_ID)
-  oracular = LoadSub(PUBSUB_ORACULAR_TOPIC_SUB_ID)
-
-  oracular_list = [x.attributes['stock'] for x in oracular]
-  pair_list = [x.attributes for x in screener if x.attributes['stock'] not in oracular_list]
-  
-  stocks = [s['stock'] for s in pair_list]
-
+  screener = LoadSub1()
+  for record in screener['Records']:
+       try:
+          stock = record['Sns']['MessageAttributes']['stock']['StringValue']
+          stocks.append(stock)
+        except Exception as e:
+          print("An error occurred")
+          raise e
   return stocks
 
 
