@@ -1,5 +1,5 @@
 import json
-import yfinance as yf
+from yahoo_fin import stock_info as yf
 import numpy as np
 import datetime as dt
 import time as tm
@@ -8,6 +8,8 @@ from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import LSTM, Dropout, Dense
 from collections import deque
+import requests as rq
+
 
 # SETTINGS
 
@@ -19,7 +21,7 @@ AWS_REGION = 'us-east-1'
 SCREENER_SNS_TOPIC_ARN= 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic'
 ORACULAR_SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingOracularTopic'
 SCREENER_SNS_TOPIC_ORACULAR_SUBSCRIPTION_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic:4de70354-535d-491a-8b93-3c148f588a11'
-
+ORACULAR_ID ='Función Oracular'
 
 
 PUBSUB_TIMEOUT = 5.0
@@ -29,44 +31,52 @@ N_STEPS = 7
 LOOKUP_STEPS = [1, 2, 3]
 
 def lambda_handler(event, context):
-    stocks = GetStocks()  #Revisar esta función en la definición
+  
+  # Get stocks for work
+  stocks = []
+  for record in event['Records']:
+    try:
+      stock = record['Sns']['Message']
+      stocks.append(stock)
+    except Exception as e:
+      print("An error occurred getting de stock from SNS message")
+      raise e
 
-    if len(stocks) > 0:
-        date_now = tm.strftime('%Y-%m-%d')
-        date_2_years_back = (dt.date.today() - dt.timedelta(days=736)).strftime('%Y-%m-%d')
+  if len(stocks) > 0:
+      date_now = tm.strftime('%Y-%m-%d')
+      date_2_years_back = (dt.date.today() - dt.timedelta(days=736)).strftime('%Y-%m-%d')
 
-        init_df = yf.get_data(stocks[0], start_date=date_2_years_back, end_date=date_now, interval='1d')
-        init_df = init_df.drop(['open', 'high', 'low', 'adjclose', 'ticker', 'volume'], axis=1)
-        init_df['date'] = init_df.index
+      init_df = yf.get_data(stocks[0], start_date=date_2_years_back, end_date=date_now, interval='1d')
+      init_df = init_df.drop(['open', 'high', 'low', 'adjclose', 'ticker', 'volume'], axis=1)
+      init_df['date'] = init_df.index
 
-        scaler = MinMaxScaler()
-        init_df['close'] = scaler.fit_transform(np.expand_dims(init_df['close'].values, axis=1))
+      scaler = MinMaxScaler()
+      init_df['close'] = scaler.fit_transform(np.expand_dims(init_df['close'].values, axis=1))
 
-        predictions = []
-        for step in LOOKUP_STEPS:
-            df, last_sequence, x_train, y_train = PrepareData(step, init_df)
-            x_train = x_train[:, :, :len(['close'])].astype(np.float32)
-            model = GetTrainedModel(x_train, y_train)
-            last_sequence = last_sequence[-N_STEPS:]
-            last_sequence = np.expand_dims(last_sequence, axis=0)
-            prediction = model.predict(last_sequence)
-            predicted_price = scaler.inverse_transform(prediction)[0][0]
-            predictions.append(round(float(predicted_price), 2))
+      predictions = []
+      for step in LOOKUP_STEPS:
+          df, last_sequence, x_train, y_train = PrepareData(step, init_df)
+          x_train = x_train[:, :, :len(['close'])].astype(np.float32)
+          model = GetTrainedModel(x_train, y_train)
+          last_sequence = last_sequence[-N_STEPS:]
+          last_sequence = np.expand_dims(last_sequence, axis=0)
+          prediction = model.predict(last_sequence)
+          predicted_price = scaler.inverse_transform(prediction)[0][0]
+          predictions.append(round(float(predicted_price), 2))
 
-        if len(predictions) == len(LOOKUP_STEPS):
-            # Asegúrate de tener las funciones PublishPredictions y send_message implementadas
-            PublishPredictions(stocks[0], predictions[0], predictions[1], predictions[2])
-            predictions_list = [str(d)+'$' for d in predictions]
-            predictions_str = ', '.join(predictions_list)
-            message = f'{ORACULAR_ID}: *{stocks[0]}* prediction for upcoming 3 days ({predictions_str})'
+      if len(predictions) == len(LOOKUP_STEPS):
+          PublishPredictions(stocks[0], predictions[0], predictions[1], predictions[2])
+          predictions_list = [str(d)+'$' for d in predictions]
+          predictions_str = ', '.join(predictions_list)
+          message = f'{ORACULAR_ID}: *{stocks[0]}* prediction for upcoming 3 days ({predictions_str})'
 
-            send_message(message)
+          send_message(message)
 
-    return {'message': f'{ORACULAR_ID}: execution DONE!'}
+  return {'message': f'{ORACULAR_ID}: execution DONE!'}
 
 # Send message to Telegram channel
 def send_message(message):
-  response = req.post(
+  response = rq.post(
         f'{TELEGRAM_URL}/{TELEGRAM_BOT_ID}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&parse_mode=Markdown&text={message}')
 
   return response
@@ -86,18 +96,6 @@ def PublishPredictions(stock, day_1, day_2, day_3):
         }
     )
 
-
-# Get stocks for work
-def GetStocks(event):
-  stocks = []
-  for record in event['Records']:
-       try:
-          stock = record['Sns']['Message']
-          stocks.append(stock)
-        except Exception as e:
-          print("An error occurred getting de stock from SNS message")
-          raise e
-  return stocks
 
 
 def PrepareData(days, init_df):
@@ -146,7 +144,7 @@ def GetTrainedModel(x_train, y_train):
   model.fit(x_train, y_train,
             batch_size=BATCH_SIZE,
             epochs=EPOCHS,
-            verbose=1)
+            verbose=0)
 
   model.summary()
 
