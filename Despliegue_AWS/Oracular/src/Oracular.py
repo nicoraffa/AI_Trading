@@ -18,7 +18,7 @@ TELEGRAM_CHAT_ID = '-1002121727585'
 AWS_REGION = 'us-east-1'
 SCREENER_SNS_TOPIC_ARN= 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic'
 ORACULAR_SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingOracularTopic'
-ORACULAR_SNS_TOPIC_SUBSCRIPTION_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic:4de70354-535d-491a-8b93-3c148f588a11'
+SCREENER_SNS_TOPIC_ORACULAR_SUBSCRIPTION_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic:4de70354-535d-491a-8b93-3c148f588a11'
 
 
 
@@ -71,55 +71,8 @@ def send_message(message):
 
   return response
 
-#Ejemplo de mensaje de salida de Screener.py:
-#MSBI buy 24.24 24.5 41
-
-#Ejemplo de event que toma Lamda de SQS:
-#{'Records': [{'EventSource': 'aws:sns', 'EventVersion': '1.0', 'EventSubscriptionArn': 'arn:aws:sns:us-east-1:232041705264:ejemplo1:7d58b081-c19f-488f-bab1-602eae1032d7', 'Sns': {'Type': 'Notification', 'MessageId': '7f188a5e-14c8-5e8f-a0cc-d7b2978650bb', 'TopicArn': 'arn:aws:sns:us-east-1:232041705264:ejemplo1', 'Subject': None, 'Message': 'hello world', 'Timestamp': '2023-12-08T02:35:58.130Z', 'SignatureVersion': '1', 'Signature': 'oRn1Q32Yf8UNc31rgSmIej3rMXfMlr8/8SRspZ1PbKbH1jUNFdwyFbUJWaHyP7F/n6JzhL1uc9QL6ruk6Udi7RHtEjJEhO5y8pe9dJhjMdDK2uOcm3SuNtqDXuAfDEHsb9cYxx5jQXY4T7Xz33sH+jHd7R0h7foHk6/TSA+OMq/MP/GPZlng+9QcTRXKPTCPbv7ucaY+SGb5l8PQKDLWN7YPSMdJ33HJva4lPL4VKuqOqnX693HAzsaECL0MzeRC1DyXhzYKfmfIRC2hyahN9jxsTOtMg8nCuAkHp1eyJtmx/KUXw/OnVnTHXDDDOFL3VneQyxNmJfZeKN9iTzB0nw==', 'SigningCertUrl': 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService-01d088a6f77103d0fe307c0069e40ed6.pem', 'UnsubscribeUrl': 'https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:232041705264:ejemplo1:7d58b081-c19f-488f-bab1-602eae1032d7', 'MessageAttributes': {'stock': {'Type': 'String', 'Value': '"MSFT"'}}}}]}
-
-# # Load data from Pub/Sub infrastructure - codigo alternativo
-# def LoadSub1(event):
-#     sns_client(boto3.client('sns'))
-#     data = []
-#     for record in event['Records']:
-#        try:
-#           message = record['Sns']['Message']
-#           data.append(message)
-#         except Exception as e:
-#           print("An error occurred")
-#           raise e
-#     print(f"Se cargaron los datos de Screener correctamente")
-#     return data
-
-
-
-
-
-# Load data from Pub/Sub infrastructure
-# def LoadSub(sub_name):
-#   data = []
-
-#   subscriber = pubsub_v1.SubscriberClient(credentials=credentials)
-#   subscription_path = subscriber.subscription_path(PUBSUB_PROJECT_ID, sub_name)
-
-#   def callback(message: pubsub_v1.subscriber.message.Message):
-#       data.append(message)
-
-#   streaming_pull_future = subscriber \
-#     .subscribe(subscription_path, callback=callback)
-
-#   with subscriber:
-#       try:
-#           streaming_pull_future.result(timeout=PUBSUB_TIMEOUT)
-#       except TimeoutError:
-#           streaming_pull_future.cancel()
-#           streaming_pull_future.result()
-
-#   return data
-
-# Publish predictions fot the stock - codigo altenativo
-
-def PublishPredictions1(stock, day_1, day_2, day_3):
+#Publicar predicciones a SNS topic
+def PublishPredictions(stock, day_1, day_2, day_3):
    sns_client = boto3.client('sns', region_name=AWS_REGION)
    message = f'{stock}'
    sns_client.publish(
@@ -133,39 +86,16 @@ def PublishPredictions1(stock, day_1, day_2, day_3):
         }
     )
 
-# # Publish predictions fot the stock
-# def PublishPredictions(stock, day_1, day_2, day_3):
-#   publisher = pubsub_v1.PublisherClient(credentials=credentials)
-#   topic_path = publisher.topic_path(PUBSUB_PROJECT_ID, PUBSUB_ORACULAR_TOPIC_ID)
-#   data_str = f'{stock}'
-#   data = data_str.encode("utf-8")
-#   publisher.publish(topic_path, \
-#                     data, \
-#                     stock=stock, \
-#                     day_1=f'{day_1}', \
-#                     day_2=f'{day_2}', \
-#                     day_3=f'{day_3}')
-
-
-#     for record in event['Records']:
-#        try:
-#           message = record['Sns']['Message']
-#           data.append(message)
-#         except Exception as e:
-#           print("An error occurred")
-#           raise e
-
-
 
 # Get stocks for work
 def GetStocks(event):
   stocks = []
   for record in event['Records']:
        try:
-          stock = record['Sns']['MessageAttributes']['stock']['StringValue']
+          stock = record['Sns']['Message']
           stocks.append(stock)
         except Exception as e:
-          print("An error occurred")
+          print("An error occurred getting de stock from SNS message")
           raise e
   return stocks
 
