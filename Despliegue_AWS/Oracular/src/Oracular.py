@@ -21,7 +21,7 @@ AWS_REGION = 'us-east-1'
 SCREENER_SNS_TOPIC_ARN= 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic'
 ORACULAR_SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingOracularTopic'
 SCREENER_SNS_TOPIC_ORACULAR_SUBSCRIPTION_ARN = 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic:4de70354-535d-491a-8b93-3c148f588a11'
-ORACULAR_ID ='Función Oracular'
+ORACULAR_ID ='Funcion Oracular'
 
 
 PUBSUB_TIMEOUT = 5.0
