@@ -1,4 +1,0 @@
-numpy
-yahoo_fin
-scikit-learn
-tensorflow
