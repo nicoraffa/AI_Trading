@@ -1,0 +1,38 @@
+{'Records': 
+    [
+        {'EventSource': 
+        'aws:sns', 
+        'EventVersion': '1.0', 
+        'EventSubscriptionArn': 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic:9581c5fd-695f-48ec-ace4-a5e1472f9d2a', 
+        'Sns': 
+            {'Type': 'Notification', 
+            'MessageId': '1b005c5c-5266-5b08-bd42-01a47d835985', 
+            'TopicArn': 'arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic', 
+            'Subject': None, 
+            'Message': 'AAGR', 
+            'Timestamp': '2023-12-16T23:07:17.259Z', 
+            'SignatureVersion': '1', 
+            'Signature': 'kg+FWFVhAA+2UVtJ06l2P5SJjM/A78tygq3d8xTIWHdK9VZkW7BopVCscCjeCSbeXhgsbg7ALEBiiQPeykuvfuoRAHlQSdJvgSgXf2c2FzInX3X7h7e68xtN0t15DylGcai7tW1g3T7OjME84zdzjYU0KW98uSoChfdb/XtJReYGF1aRVvZUGKs42uOTugKm8kGjSVOxB0W3P+dJZrNS2vYs2ODs3GTOnszSvsm9B4oyGeVOQt/OH1s3PNQeljUlUqs5USPthoI3YWnriNF2QKIFBoWw59gzHGaMiAIvTvvVksnqO7Onc6afm3WpC6W4fCHH5pTjxZb8k0YbVwcE+A==', 
+            'SigningCertUrl': 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService-01d088a6f77103d0fe307c0069e40ed6.pem', 
+            'UnsubscribeUrl': 'https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:232041705264:TradingScreenerTopic:9581c5fd-695f-48ec-ace4-a5e1472f9d2a', 
+            'MessageAttributes': 
+                {'shares_to_trade': 
+                    {'Type': 'String', 
+                    'Value': '1666'}, 
+                'take_profit': 
+                    {'Type': 'String', 
+                    'Value': '0.61'}, 
+                'stop_loss': 
+                    {'Type': 'String', 
+                    'Value': '0.6'}, 
+                'stock': 
+                    {'Type': 'String', 
+                    'Value': 'AAGR'}, 
+                'operation': 
+                    {'Type': 'String', 
+                    'Value': 'buy'}
+                }
+            }
+        }
+    ]
+    }
