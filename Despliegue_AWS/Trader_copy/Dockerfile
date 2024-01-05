@@ -10,5 +10,6 @@ RUN pip install -r requirements.txt
 COPY src/* ${LAMBDA_TASK_ROOT}
 
 # Set the CMD to your handler.
-CMD [ "Screener.lambda_handler" ]
+CMD [ "Trader.lambda_handler" ]
+
 
