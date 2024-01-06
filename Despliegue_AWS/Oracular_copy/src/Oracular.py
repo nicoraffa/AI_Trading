@@ -43,31 +43,32 @@ def lambda_handler(event, context):
   if len(info_completa) > 0:
     date_now = tm.strftime('%Y-%m-%d')
     date_2_years_back = (dt.date.today() - dt.timedelta(days=736)).strftime('%Y-%m-%d')
-    for stock_item in info_completa:
-      init_df = yf.get_data(stock_item['stock'], start_date=date_2_years_back, end_date=date_now, interval='1d')
-      init_df = init_df.drop(['open', 'high', 'low', 'adjclose', 'ticker', 'volume'], axis=1)
-      init_df['date'] = init_df.index
-      scaler = MinMaxScaler()
-      init_df['close'] = scaler.fit_transform(np.expand_dims(init_df['close'].values, axis=1))
-      #Empezamos a tomar las predicciones
-      predictions = []
-      for step in LOOKUP_STEPS:
-        df, last_sequence, x_train, y_train = PrepareData(step, init_df)
-        x_train = x_train[:, :, :len(['close'])].astype(np.float32)
-        model = GetTrainedModel(x_train, y_train)
-        last_sequence = last_sequence[-N_STEPS:]
-        last_sequence = np.expand_dims(last_sequence, axis=0)
-        prediction = model.predict(last_sequence)
-        predicted_price = scaler.inverse_transform(prediction)[0][0]
-        predictions.append(round(float(predicted_price), 2))
 
-      if len(predictions) == len(LOOKUP_STEPS):
-          mensaje = {'stock': stock_item['stock'],'day_1': str(predictions[0]),'day_2': str(predictions[1]),'day_3': str(predictions[2],),'operation': stock_item['operation'],'stop_loss': stock_item['stop_loss'],'take_profit': stock_item['take_profit'],'shares_to_trade': stock_item['shares_to_trade']}
-          mensajes.append(mensaje)
-          predictions_list = [str(d)+'$' for d in predictions]
-          predictions_str = ', '.join(predictions_list)
-          message_telegram = f"{ORACULAR_ID}: *{stock_item['stock']}* prediction for upcoming 3 days ({predictions_str})"
-          send_message(message_telegram)
+  for stock_item in info_completa:
+    init_df = yf.get_data(stock_item['stock'], start_date=date_2_years_back, end_date=date_now, interval='1d')
+    init_df = init_df.drop(['open', 'high', 'low', 'adjclose', 'ticker', 'volume'], axis=1)
+    init_df['date'] = init_df.index
+    scaler = MinMaxScaler()
+    init_df['close'] = scaler.fit_transform(np.expand_dims(init_df['close'].values, axis=1))
+    #Empezamos a tomar las predicciones
+    predictions = []
+    for step in LOOKUP_STEPS:
+      df, last_sequence, x_train, y_train = PrepareData(step, init_df)
+      x_train = x_train[:, :, :len(['close'])].astype(np.float32)
+      model = GetTrainedModel(x_train, y_train)
+      last_sequence = last_sequence[-N_STEPS:]
+      last_sequence = np.expand_dims(last_sequence, axis=0)
+      prediction = model.predict(last_sequence)
+      predicted_price = scaler.inverse_transform(prediction)[0][0]
+      predictions.append(round(float(predicted_price), 2))
+
+    if len(predictions) == len(LOOKUP_STEPS):
+        mensaje = {'stock': stock_item['stock'],'day_1': str(predictions[0]),'day_2': str(predictions[1]),'day_3': str(predictions[2],),'operation': stock_item['operation'],'stop_loss': stock_item['stop_loss'],'take_profit': stock_item['take_profit'],'shares_to_trade': stock_item['shares_to_trade']}
+        mensajes.append(mensaje)
+        predictions_list = [str(d)+'$' for d in predictions]
+        predictions_str = ', '.join(predictions_list)
+        message_telegram = f"{ORACULAR_ID}: *{stock_item['stock']}* prediction for upcoming 3 days ({predictions_str})"
+        send_message(message_telegram)
 
   publish_message_to_topic(mensajes)
   return {'message': f'{ORACULAR_ID}: execution DONE!'}
