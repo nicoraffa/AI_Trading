@@ -42,10 +42,10 @@ def lambda_handler(event, context):
   mensajes = []
   if len(info_completa) > 0:
     date_now = tm.strftime('%Y-%m-%d')
-    date_2_years_back = (dt.date.today() - dt.timedelta(days=736)).strftime('%Y-%m-%d')
+    date_3_years_back = (dt.date.today() - dt.timedelta(days=1104)).strftime('%Y-%m-%d')
 
   for stock_item in info_completa:
-    init_df = yf.get_data(stock_item['stock'], start_date=date_2_years_back, end_date=date_now, interval='1d')
+    init_df = yf.get_data(stock_item['stock'], start_date=date_3_years_back, end_date=date_now, interval='1d')
     init_df = init_df.drop(['open', 'high', 'low', 'adjclose', 'ticker', 'volume'], axis=1)
     init_df['date'] = init_df.index
     scaler = MinMaxScaler()
